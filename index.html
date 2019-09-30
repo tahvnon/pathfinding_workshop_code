@@ -1,0 +1,368 @@
+<html>
+    <head>
+        <title>node_editor</title>
+        <meta charset="UTF-8" />
+    </head>
+    <body>
+<div>
+    <canvas id="canvas1" style="border: 1px solid black;" width="800" height="600"></canvas>
+</div>
+<div>
+    <label for="cb_drawBackground">
+        <input id="cb_drawBackground" type="checkbox" checked />Draw background
+    </label>
+    <label for="cb_drawVertices">
+        <input id="cb_drawVertices" type="checkbox" checked />Draw vertices
+    </label>
+    <label for="cb_drawEdges">
+            <input id="cb_drawEdges" type="checkbox" checked />Draw edges
+    </label>
+    <label for="cb_drawVerticeLabels">
+            <input id="cb_drawVerticeLabels" type="checkbox" checked />Draw vertice labels
+    </label>
+    <label for="cb_drawEdgeLabels">
+    <input id="cb_drawEdgeLabels" type="checkbox" checked />Draw edge labels
+    </label>
+
+    </div>
+    <div>
+        <input type="button" id="btn_updateOutput" value="Update" onclick="updateOutput();"/>
+        <textarea id="txt_output1" rows="5" cols="80"></textarea>
+    </div>
+<script>
+var qsl = q => { return document.querySelector(q);};
+var mouseDown = false;
+
+var canvas;
+var ctx;
+var img = new Image();
+
+var makeVertice = (x,y) => { return {x : x, y: y}}
+var makeEdge = (v1,v2) => { return { v1: v1, v2: v2}}
+
+var vertices = [];
+var edges = [];
+var selectedVertices = [];
+var selectedEdges = [];
+
+canvas = qsl('#canvas1');
+ctx = canvas.getContext('2d');
+
+var options = {
+    drawVertices : false,
+    drawEdges : false,
+    drawBackground: false,
+    drawVerticeLabels: false,
+    drawEdgeLabels: false,
+}
+
+function updateOutput(){
+    var o = {
+        'vertices': vertices,
+        'edges' : edges,
+    }
+    qsl('#txt_output1').innerText = JSON.stringify(o);
+}
+
+function update(){
+    options.drawVertices = qsl('#cb_drawVertices').checked
+    options.drawBackground = qsl('#cb_drawBackground').checked
+    options.drawEdges = qsl('#cb_drawEdges').checked
+    options.drawVerticeLabels = qsl('#cb_drawVerticeLabels').checked
+    options.drawEdgeLabels = qsl('#cb_drawEdgeLabels').checked
+
+}
+
+function init(){
+    canvas.addEventListener('click', canvasEventHandler);
+    document.addEventListener('keyup', canvasEventHandler, true);
+    canvas.addEventListener('mousedown', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        if(e.buttons == 2){
+        }else if(e.buttons == 1){
+            mouseDown = true;
+        }
+    });
+    canvas.addEventListener('blur', e => { mouseDown = false; });
+    canvas.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        e.stopPropagation();
+        selectedVertices = [];
+        selectedEdges = [];
+        draw();
+        
+        mouseDown = false;
+    });
+    canvas.addEventListener('mouseup', e => {
+        mouseDown = false;
+    });
+    canvas.addEventListener('mousemove', e => { 
+        if(mouseDown){
+            var v = vertices[selectedVertices[0]];
+            if(v==null){return;}
+            var cv = mapVerticeToCanvas(v, canvas);
+            var ce = mapInputEventToCanvas(e, canvas);
+            var xd = Math.abs(cv.x-ce.x);
+            var yd = Math.abs(cv.y-ce.y);
+            var d = Math.sqrt( Math.pow(xd,2) + Math.pow(yd,2));
+            if(d > 50)return;
+            v.x = ce.x / canvas.width;
+            v.y = ce.y / canvas.height;
+            draw();
+        }
+    });
+
+}
+
+function mapVerticeToCanvas(v,c){
+    if(v==null){
+        console.log('how did we end up here');
+    }
+    return {x: v.x*c.width, y: v.y*c.height};
+}
+function mapInputEventToCanvas(event, canvas){
+    const rect = canvas.getBoundingClientRect()
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    return {x:x, y:y};
+}
+function drawVertices(vs){
+    for(var i=0;i<vs.length;i++){
+        var v = vs[i];
+        if(v == null)
+            continue;
+        drawVertice(v);
+    }
+    ctx.stroke();
+}
+
+function drawEdges(es, vs){
+    for(var i=0;i<es.length;i++){
+        drawEdge(vs[es[i].v1],vs[es[i].v2] );
+    }
+    ctx.stroke();
+}
+
+
+function drawVerticeLabels(){
+    for(var i=0;i<vertices.length;i++){
+        var v = vertices[i];
+        if(v == null)
+            continue;
+        var cv = mapVerticeToCanvas(v,canvas);
+        drawLabel('V'+i, cv.x+2,cv.y+2)
+    }
+}
+function drawEdgeLabels(){
+    for(var i=0;i<edges.length;i++){
+        var edge = edges[i]
+        var v1 = vertices[edge.v1]
+        var v2 = vertices[edge.v2]
+        var midPointVertice = makeVertice(
+            Math.min(v1.x, v2.x) +( Math.max(v1.x, v2.x) - Math.min(v1.x, v2.x) ) *0.5,
+            Math.min(v1.y, v2.y) +( Math.max(v1.y, v2.y) - Math.min(v1.y, v2.y) ) *0.5,                        
+        );
+        var cv = mapVerticeToCanvas(midPointVertice, canvas)
+        drawLabel('E'+i, cv.x, cv.y)
+    }
+}
+function drawVertice(v){
+        var cv = mapVerticeToCanvas(v, canvas);
+        var x=cv.x, y=cv.y;
+        // TODO - handle type?
+        ctx.rect(x-3,y-3,3,3);
+}
+
+function drawEdge(v1,v2){
+    var cv1 = mapVerticeToCanvas(v1, canvas);   
+    var cv2 = mapVerticeToCanvas(v2, canvas);
+    ctx.moveTo(cv1.x, cv1.y);
+    ctx.lineTo(cv2.x, cv2.y);
+}
+
+function draw(){
+    update()
+    ctx.beginPath()
+    ctx.fillStyle = 'white';
+    ctx.fillRect(0,0, canvas.width, canvas.height);
+    
+    
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 1;
+
+    if(options.drawBackground)    
+        ctx.drawImage(img, 0,0);
+    if(options.drawVertices)
+        drawVertices(vertices);
+    if(options.drawEdges)
+        drawEdges(edges, vertices);
+    
+    if(options.drawVerticeLabels)
+        drawVerticeLabels()
+    if(options.drawEdgeLabels)
+        drawEdgeLabels()
+        
+    if(selectedVertices.length > 0){
+        ctx.beginPath();
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 4;
+        
+        drawVertices(selectedVertices.map(vidx=>vertices[vidx]));
+    }
+}
+
+function drawLabel(text, x, y){
+    ctx.font = 'monospace'
+    ctx.fillStyle = 'black'
+    ctx.fillText(text, x, y);
+}
+
+
+function canvasEventHandler(event){
+    var minDist = 1000000;
+    var closestVerticeIdx = null;
+    if(event.type == 'click'){
+        if(event.altKey){
+            console.log(event)
+            var cx = mapInputEventToCanvas(event, canvas);
+            var newVertice = makeVertice(
+                cx.x / canvas.width, cx.y / canvas.height
+            );
+            vertices.push(newVertice);
+            selectedVertices = []; selectedEdges = [];
+        }else{
+            for(var i=0;i<vertices.length;i++){
+                var v=vertices[i];
+                if(v == null)
+                    continue
+                var cv = mapVerticeToCanvas(v, canvas);
+                var xd = Math.abs(cv.x-event.x);
+                var yd = Math.abs(cv.y-event.y);
+                var d = Math.sqrt( Math.pow(xd,2) + Math.pow(yd,2));
+                if (d<minDist){
+                    minDist = d;
+                    closestVerticeIdx = i;
+                }
+            }
+            if(minDist < 20 && closestVerticeIdx !== null){
+                if(event.shiftKey){
+                    selectedVertices.push(closestVerticeIdx);
+                }else{
+                    selectedVertices = [closestVerticeIdx];
+                }
+            }
+        }
+    }else if(event.type =='keyup'){
+        if(event.key == 'f'){
+            if(selectedVertices.length == 2){
+                var i;
+                // direction does not matter
+                var edge = makeEdge(selectedVertices[0], selectedVertices[1]);
+                edges.push(edge);
+            }
+        }else if(event.key == 'w'){
+            if(selectedVertices.length ==2){
+                var v1idx = selectedVertices[0]
+                var v2idx = selectedVertices[1]
+                var i
+                console.log('finding edge between vertices ')
+                var foundEdgeIdx = -1
+                for(i=0;i<edges.length;i++){
+                    var edge = edges[i];
+                    if(
+                        (edge.v1 == v1idx && edge.v2 == v2idx) ||
+                        (edge.v1 == v2idx && edge.v2 == v1idx)
+                    ){
+                        console.log('edge found ', edge);
+                        if(foundEdgeIdx != -1)
+                            console.warn('duplicate edge found, previous is ', edges[foundEdgeIdx])
+                        foundEdgeIdx = i
+                    }
+                }
+                if(foundEdgeIdx != -1){
+                    var edge = edges[foundEdgeIdx]
+                    console.log('splitting edge ', edge)
+                    var v1 = vertices[v1idx]
+                    var v2 = vertices[v2idx]
+                    var newVertice = makeVertice(
+                        Math.min(v1.x, v2.x) +( Math.max(v1.x, v2.x) - Math.min(v1.x, v2.x) ) *0.5,
+                        Math.min(v1.y, v2.y) +( Math.max(v1.y, v2.y) - Math.min(v1.y, v2.y) ) *0.5,                        
+                    );
+                    var newVerticeIdx = vertices.length;
+                    vertices.push(newVertice)
+                    
+
+                    if(edge.v1 == v1idx){
+                        console.log('case a')
+                        edge.v2 = newVerticeIdx
+                        var newEdge = makeEdge(newVerticeIdx, v2idx)
+                    }else if(edge.v1 == v2idx){
+                        console.log('case b')
+                        edge.v1 = newVerticeIdx
+                        var newEdge = makeEdge(newVerticeIdx, v2idx)
+                    }else{
+                        console.log('how did this happen?')
+                        throw new Exception('runtime error, weird edge')
+                    }
+
+                    edges.push(newEdge)
+                    console.log('creadted vertice ', newVertice)
+                    console.log('created edge ', newEdge)
+                }
+
+            }
+        }else if(event.key == 'x'){
+            if(selectedVertices.length==1){
+                var v = selectedVertices[0];
+                console.log('finding and deleting edges connected to vertice ', selectedVertices[0]);
+                var numEdgesPreDeletion = edges.length;
+                edges = edges.filter( (edge) => edge.v1 != v && edge.v2 != v)
+                console.log('deleted ', numEdgesPreDeletion - edges.length, ' edges');
+                vertices[v] = null;
+            }
+        }
+
+    }
+    // TODO - determine if redraw is needed?
+    draw();
+}
+function loadData(filename){
+    var xhr = new XMLHttpRequest();
+    xhr.open('get', filename, true);
+    xhr.onreadystatechange = function() {
+        if(xhr.readyState == 4 && xhr.status == 200){
+            var data = JSON.parse(xhr.responseText);
+            console.log('loaded data!')
+            vertices = data.vertices;
+            edges = data.edges;
+            draw();
+        }
+        
+    };
+    xhr.send();
+
+}
+function cross(x,y,size,strokeStyle){
+    ctx.beginPath()
+    ctx.lineWidth =2
+    ctx.strokeStyle = strokeStyle || '#00ff00'
+    ctx.moveTo(x-size,y-size)
+    ctx.lineTo(x+size,y+size)
+    ctx.moveTo(x-size,y+size)
+    ctx.lineTo(x+size,y-size)
+    ctx.stroke()
+    ctx.beginPath()
+}
+img.src = 'background.png';
+img.addEventListener('load', e => {
+    console.log("image loaded, initing");
+    canvas.width = img.width;
+    canvas.height = img.height;
+
+    init();
+});
+
+</script>
+    </body>
+</html>
