@@ -39,9 +39,38 @@ var img = new Image();
 
 var makeVertice = (x,y) => { return {x : x, y: y}}
 var makeEdge = (v1,v2) => { return { v1: v1, v2: v2}}
+var makeDrawTask = (params, updateFunc, drawFunc) => { return { params: params, updateFunc: updateFunc, drawFunc:drawFunc}}
 
+
+function xxx(vs){
+    var edges = vs
+        .reduce( (acc,cur,idx,arr) => { return (idx==0) ? [] : [...acc, [vertices[arr[idx-1]],vertices[arr[idx]]]] }, [])
+    return edges
+}
+
+function yyy(vs){
+    var edges = xxx(vs)
+    dt = makeDrawTask(
+        {edges: edges, finished: false, step: 0.01, pct: 0.0},
+        (p) => {
+            return {
+                edges: (p.pct >= 1.0) ? p.edges.slice(1) : p.edges,
+                finished: p.edges.length == 0,
+                pct: (p.pct < 1.0) ? p.pct + p.step : 0,
+                step: p.step
+            }
+
+        },
+        (p) => {
+            if(p.edges.length > 0)
+                drawEdge(p.edges[0][0], p.edges[0][1], p.pct);ctx.stroke();
+        }
+    )
+    return dt
+}
 var vertices = [];
 var edges = [];
+var drawTasks = []
 var selectedVertices = [];
 var selectedEdges = [];
 
@@ -54,7 +83,28 @@ var options = {
     drawBackground: false,
     drawVerticeLabels: false,
     drawEdgeLabels: false,
+    drawTasksEnabled: true,
 }
+
+function processDrawTasks(){
+    if(options.drawTasksEnabled == false)
+        return
+    if(drawTasks.length != 0){
+        var i,j,m,n
+        var dt
+        var p,d
+        for(i=0;i<drawTasks.length;i++){
+            dt = drawTasks[i]
+            dt.params = dt.updateFunc(dt.params)
+            dt.drawFunc(dt.params)
+        }
+        var dts = drawTasks.filter((e) => { return e.params.finished == false})
+        drawTasks = dts
+    }
+    window.requestAnimationFrame(processDrawTasks)
+}
+
+
 
 function updateOutput(){
     var o = {
@@ -174,9 +224,13 @@ function drawVertice(v){
         ctx.rect(x-3,y-3,3,3);
 }
 
-function drawEdge(v1,v2){
+function drawEdge(v1,v2, pct){
     var cv1 = mapVerticeToCanvas(v1, canvas);   
     var cv2 = mapVerticeToCanvas(v2, canvas);
+    if(pct !== undefined){
+        cv2.x = cv1.x + (cv2.x - cv1.x) * pct;
+        cv2.y = cv1.y + (cv2.y - cv1.y) * pct;
+    }
     ctx.moveTo(cv1.x, cv1.y);
     ctx.lineTo(cv2.x, cv2.y);
 }
@@ -394,6 +448,8 @@ function defragmentVerticesAndEdges(vs, es){
     edges = o[1]
     console.log('defragmented, old v count:', vs.length, ' new v count:', vertices.length)
 }
+
+
 </script>
     </body>
 </html>
