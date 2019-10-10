@@ -41,6 +41,8 @@ var makeVertice = (x,y) => { return {x : x, y: y}}
 var makeEdge = (v1,v2) => { return { v1: v1, v2: v2}}
 var makeDrawTask = (params, updateFunc, drawFunc) => { return { params: params, updateFunc: updateFunc, drawFunc:drawFunc}}
 
+var PIXELS_PER_SECOND = 50
+var FPS = 60
 
 function xxx(vs){
     var edges = vs
@@ -48,22 +50,53 @@ function xxx(vs){
     return edges
 }
 
+function zzz(p1,p2){
+    return Math.sqrt(
+        Math.pow(Math.abs(p1.x - p2.x),2) + Math.pow(Math.abs(p1.y - p2.y),2)
+    )
+}
+
+
+function calcStep(edge){
+    var cp1 = mapVerticeToCanvas(edge[0],canvas)
+    var cp2 = mapVerticeToCanvas(edge[1], canvas)
+    var dist = zzz(cp1,cp2)
+    var tt = dist/PIXELS_PER_SECOND
+    var step = 1.0 / tt / FPS
+
+    return step
+}
+
 function yyy(vs){
     var edges = xxx(vs)
     dt = makeDrawTask(
-        {edges: edges, finished: false, step: 0.01, pct: 0.0},
+        {
+            edges: edges,
+            finished: false,
+            step: calcStep(edges[0]),
+            pct: 0.0
+        },
         (p) => {
             return {
                 edges: (p.pct >= 1.0) ? p.edges.slice(1) : p.edges,
                 finished: p.edges.length == 0,
                 pct: (p.pct < 1.0) ? p.pct + p.step : 0,
-                step: p.step
+                // if pct is >= 1.0, we've moved on to the next edge
+                // and should recalculate step for the NEXT edge, except
+                // if we're already on the last edge, in which case we just
+                // skip the calculation. with pct < 1.0 there is no
+                // need to recalculate the step
+                step: (p.pct >= 1.0) ? (p.edges.length > 1) ? calcStep(p.edges[1]) : p.step: p.step,
             }
 
         },
         (p) => {
-            if(p.edges.length > 0)
+            ctx.lineWidth = 2
+            ctx.strokeStyle = 'red'
+            if(p.edges.length > 0){
+                ctx.beginPath()
                 drawEdge(p.edges[0][0], p.edges[0][1], p.pct);ctx.stroke();
+            }
         }
     )
     return dt
@@ -415,6 +448,7 @@ img.addEventListener('load', e => {
     canvas.height = img.height;
 
     init();
+    loadData('vertices.json')
 });
 function _defragmentVerticesAndEdges(vertices, edges) {
     var newVertices = []
@@ -448,8 +482,8 @@ function defragmentVerticesAndEdges(vs, es){
     edges = o[1]
     console.log('defragmented, old v count:', vs.length, ' new v count:', vertices.length)
 }
-
-
+//drawTasks.push(yyy([ 53, 46, 0, 1, 2, 4, 5, 6, 7 ])) ; processDrawTasks()
+//drawTasks.push(yyy([ 9,7,6,5,3,21,23,24,24,25,0,46,53,53,53,53,51,52 ])) ; processDrawTasks()
 </script>
     </body>
 </html>
