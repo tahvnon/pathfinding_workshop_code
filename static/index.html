@@ -31,16 +31,20 @@
       </label>
     </div>
     <div>
-      <input
-        type="button"
-        id="btn_updateOutput"
-        value="Update"
-        onclick="updateOutput();"
-      />
+      <span
+        >enter vertice numbers separated by spaces. click 'draw path' to
+        specified path.</span
+      ><br />
+      <input type="button" id="btn_drawPath" value="draw path" /><br />
+      <textarea id="txt_path_input" rows="5" cols="80"></textarea><br />
+      <span id="txt_path_input_error" style="color: red;display:none"> </span>
+    </div>
+    <div>
       <textarea id="txt_output1" rows="5" cols="80"></textarea>
+      <input type="button" id="btn_updateOutput" value="Update" /><br />
     </div>
     <script>
-      let app = (function() {
+      app = (function() {
         function qsl(q) {
           return document.querySelector(q);
         }
@@ -87,7 +91,7 @@
           return step;
         }
 
-        function yyy(vs) {
+        function createDrawPathDrawTask(vs) {
           let edges = xxx(vs);
           let dt = makeDrawTask(
             {
@@ -167,7 +171,7 @@
             vertices: vertices,
             edges: edges
           };
-          qsl("#txt_output1").innerText = JSON.stringify(o);
+          qsl("#txt_output1").value = JSON.stringify(o);
         }
 
         function update() {
@@ -177,8 +181,29 @@
           options.drawVerticeLabels = qsl("#cb_drawVerticeLabels").checked;
           options.drawEdgeLabels = qsl("#cb_drawEdgeLabels").checked;
         }
-
+        function drawPath() {
+          let pathInput = qsl("#txt_path_input").value;
+          let errorSpan = qsl("#txt_path_input_error");
+          errorSpan.style.display = "none";
+          let maybePoints;
+          // FIXME stricter parsing, validate that entered vertices exist?
+          try {
+            maybePoints = pathInput.split(",").map(i => parseInt(i));
+            if (maybePoints.includes(NaN)) {
+              throw new Error("bad input");
+            }
+          } catch {
+            errorSpan.innerHTML = "error! malformatted input. example: 1,2,3,4";
+            errorSpan.style.display = "";
+            return;
+          }
+          console.log("drawing path between vertices", maybePoints);
+          drawTasks.push(createDrawPathDrawTask(maybePoints));
+          processDrawTasks();
+        }
         function init() {
+          qsl("#btn_drawPath").addEventListener("click", drawPath);
+          qsl("#btn_updateOutput").addEventListener("click", updateOutput);
           canvas.addEventListener("click", canvasEventHandler);
           document.addEventListener("keyup", canvasEventHandler, true);
           canvas.addEventListener("mousedown", e => {
@@ -524,8 +549,8 @@
             vertices.length
           );
         }
-        //drawTasks.push(yyy([ 53, 46, 0, 1, 2, 4, 5, 6, 7 ])) ; processDrawTasks()
-        //drawTasks.push(yyy([ 9,7,6,5,3,21,23,24,24,25,0,46,53,53,53,53,51,52 ])) ; processDrawTasks()
+        //drawTasks.push(createDrawPathDrawTask([ 53, 46, 0, 1, 2, 4, 5, 6, 7 ])) ; processDrawTasks()
+        //drawTasks.push(createDrawPathDrawTask([ 9,7,6,5,3,21,23,24,24,25,0,46,53,53,53,53,51,52 ])) ; processDrawTasks()
       })();
     </script>
   </body>
