@@ -44,7 +44,8 @@
       <input type="button" id="btn_updateOutput" value="Update" /><br />
     </div>
     <script>
-      app = (function() {
+      let app = (function() {
+        // shorthand function for retrieving a DOM element by selector (FIXME is that what they are called?)
         function qsl(q) {
           return document.querySelector(q);
         }
@@ -52,6 +53,8 @@
         let canvas;
         let ctx;
         let backgroundImage = new Image();
+
+        // helper functions for object construction
         function makeVertice(x, y) {
           return { x: x, y: y };
         }
@@ -62,19 +65,26 @@
           return { params: params, updateFunc: updateFunc, drawFunc: drawFunc };
         }
 
+        // velocity of animated path drawing
         let PIXELS_PER_SECOND = 50;
+        // number of frames per second (= approxmiately how many times per second the draws
+        // (TODO: @quarian, is this a reasonable description?)
         let FPS = 60;
 
-        function xxx(vs) {
+        // creates an array of edges through the given vertices
+        function createEdgePathFromVertices(vs) {
           let edges = vs.reduce((acc, cur, idx, arr) => {
             return idx == 0
-              ? []
-              : [...acc, [vertices[arr[idx - 1]], vertices[arr[idx]]]];
+              ? [] // ignore the first vertice
+              : // for subsequent vertices, build an edge from the previous
+                // vertice to the current vertice, appending this new edge to
+                // the accumulated edges
+                [...acc, [vs[idx - 1], vs[idx]]];
           }, []);
           return edges;
         }
 
-        function zzz(p1, p2) {
+        function calcDistance(p1, p2) {
           return Math.sqrt(
             Math.pow(Math.abs(p1.x - p2.x), 2) +
               Math.pow(Math.abs(p1.y - p2.y), 2)
@@ -84,7 +94,7 @@
         function calcStep(edge) {
           let cp1 = mapVerticeToCanvas(edge[0], canvas);
           let cp2 = mapVerticeToCanvas(edge[1], canvas);
-          let dist = zzz(cp1, cp2);
+          let dist = calcDistance(cp1, cp2);
           let tt = dist / PIXELS_PER_SECOND;
           let step = 1.0 / tt / FPS;
 
@@ -92,7 +102,7 @@
         }
 
         function createDrawPathDrawTask(vs) {
-          let edges = xxx(vs);
+          let edges = createEdgePathFromVertices(vs);
           let dt = makeDrawTask(
             {
               edges: edges,
@@ -139,7 +149,8 @@
         canvas = qsl("#canvas1");
         ctx = canvas.getContext("2d");
 
-        let options = {
+        // initial drawing drawingOptions
+        let drawingOptions = {
           drawVertices: false,
           drawEdges: false,
           drawBackground: false,
@@ -148,8 +159,15 @@
           drawTasksEnabled: true
         };
 
+        // evaluate and execute existing drawtasks, removing ones that are finished.
+        // DrawTasks are objects with some state (params) and two functions (updateFunc and drawFunc)
+        // when DrawTasks are processed, the update function is called with the current parameters of
+        // the DrawTask. The parameters are replaced with the result of the updateFunction after the
+        // updateFunction returns. The drawFunction is called with the updated parameters. DrawTasks
+        // should have a parameter named `finished`. If this parameter evaluates to true, the DrawTask
+        // is considered finished and will be removed from the list of DrawTasks being processed.
         function processDrawTasks() {
-          if (options.drawTasksEnabled == false) return;
+          if (drawingOptions.drawTasksEnabled == false) return;
           if (drawTasks.length != 0) {
             let i;
             let dt;
@@ -166,6 +184,7 @@
           window.requestAnimationFrame(processDrawTasks);
         }
 
+        // dump current set of vertices and edges into TextArea, as json
         function updateOutput() {
           let o = {
             vertices: vertices,
@@ -174,13 +193,18 @@
           qsl("#txt_output1").value = JSON.stringify(o);
         }
 
+        // update 'drawing drawingOptions' to match state displayed by UI elements
         function update() {
-          options.drawVertices = qsl("#cb_drawVertices").checked;
-          options.drawBackground = qsl("#cb_drawBackground").checked;
-          options.drawEdges = qsl("#cb_drawEdges").checked;
-          options.drawVerticeLabels = qsl("#cb_drawVerticeLabels").checked;
-          options.drawEdgeLabels = qsl("#cb_drawEdgeLabels").checked;
+          drawingOptions.drawVertices = qsl("#cb_drawVertices").checked;
+          drawingOptions.drawBackground = qsl("#cb_drawBackground").checked;
+          drawingOptions.drawEdges = qsl("#cb_drawEdges").checked;
+          drawingOptions.drawVerticeLabels = qsl(
+            "#cb_drawVerticeLabels"
+          ).checked;
+          drawingOptions.drawEdgeLabels = qsl("#cb_drawEdgeLabels").checked;
         }
+
+        // called when the `draw path` button is clicked
         function drawPath() {
           let pathInput = qsl("#txt_path_input").value;
           let errorSpan = qsl("#txt_path_input_error");
@@ -198,9 +222,13 @@
             return;
           }
           console.log("drawing path between vertices", maybePoints);
-          drawTasks.push(createDrawPathDrawTask(maybePoints));
+          let pathVertices = maybePoints.map(vertexIdx => {
+            return vertices[vertexIdx];
+          });
+          drawTasks.push(createDrawPathDrawTask(pathVertices));
           processDrawTasks();
         }
+        // initialization, bind event handlers etc
         function init() {
           qsl("#btn_drawPath").addEventListener("click", drawPath);
           qsl("#btn_updateOutput").addEventListener("click", updateOutput);
@@ -214,6 +242,7 @@
               mouseDown = true;
             }
           });
+          // always strop dragging if the canvas loses focus
           canvas.addEventListener("blur", e => {
             mouseDown = false;
           });
@@ -237,9 +266,8 @@
               }
               let cv = mapVerticeToCanvas(v, canvas);
               let ce = mapInputEventToCanvas(e, canvas);
-              let xd = Math.abs(cv.x - ce.x);
-              let yd = Math.abs(cv.y - ce.y);
-              let d = Math.sqrt(Math.pow(xd, 2) + Math.pow(yd, 2));
+              let d = calcDistance(cv, ce);
+              // don't pick a point too far away from the click
               if (d > 50) return;
               v.x = ce.x / canvas.width;
               v.y = ce.y / canvas.height;
@@ -248,12 +276,15 @@
           });
         }
 
+        // helper function to map normalized vertice coordinates (0.0-1.0) to canvas coordinates
         function mapVerticeToCanvas(v, c) {
           if (v == null) {
             console.log("how did we end up here");
           }
           return { x: v.x * c.width, y: v.y * c.height };
         }
+
+        // translate input event coordinates to canvas coordinates
         function mapInputEventToCanvas(event, canvas) {
           const rect = canvas.getBoundingClientRect();
           const x = event.clientX - rect.left;
@@ -321,6 +352,7 @@
           ctx.lineTo(cv2.x, cv2.y);
         }
 
+        // main draw function, paints the canvas according to drawOptions
         function draw() {
           update();
           ctx.beginPath();
@@ -330,12 +362,13 @@
           ctx.strokeStyle = "black";
           ctx.lineWidth = 1;
 
-          if (options.drawBackground) ctx.drawImage(backgroundImage, 0, 0);
-          if (options.drawVertices) drawVertices(vertices);
-          if (options.drawEdges) drawEdges(edges, vertices);
+          if (drawingOptions.drawBackground)
+            ctx.drawImage(backgroundImage, 0, 0);
+          if (drawingOptions.drawVertices) drawVertices(vertices);
+          if (drawingOptions.drawEdges) drawEdges(edges, vertices);
 
-          if (options.drawVerticeLabels) drawVerticeLabels();
-          if (options.drawEdgeLabels) drawEdgeLabels();
+          if (drawingOptions.drawVerticeLabels) drawVerticeLabels();
+          if (drawingOptions.drawEdgeLabels) drawEdgeLabels();
 
           if (selectedVertices.length > 0) {
             ctx.beginPath();
@@ -352,6 +385,9 @@
           ctx.fillText(text, x, y);
         }
 
+        // TODO - document this
+        // handles interaction with the canvas, creating new
+        // vertices, creating edges, splitting edges, moving vertices
         function canvasEventHandler(event) {
           let minDist = 1000000;
           let closestVerticeIdx = null;
