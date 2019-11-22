@@ -1,0 +1,26 @@
+Select vertices by clicking on vertices using the left mouse button.
+Select multiple vertices by holding down the shift key while left clicking.
+Note that only two selected vertices are used for anything.
+
+Unselect vertices by clicking on the right mouse button.
+
+Holding down the alt key while clicking the left mouse button will create a new vertice.
+Select two vertices and press the f key to create an edge between them.
+
+Pressing the w key with two vertices with an edge between them will split the edge at the middle.
+Pressing the x key will delete the selected vertice.
+
+
+Select two vertices and click the bfs or Bellman-Ford button to draw a path between 
+the vertices using either bfs or Bellman-Ford to calculate the path.
+
+Click on the map after changing the 
+
+Draw background
+Draw vertices
+Draw edges
+Draw vertice labels
+Draw edge labels
+
+Paths drawn using bfs or Bellman-Ford will unfortunately be erased when
+redrawing the entire map.
