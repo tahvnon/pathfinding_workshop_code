@@ -72,7 +72,7 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
     return step;
   }
 
-  function createDrawPathDrawTask(vs) {
+  function createDrawPathDrawTask(vs, extra) {
     let edges = createEdgePathFromVertices(vs);
     let dt = makeDrawTask(
       {
@@ -100,8 +100,8 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
         };
       },
       p => {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = "red";
+        ctx.lineWidth = (extra && extra.lineWidth) || 2;
+        ctx.strokeStyle = (extra && extra.strokeStyle) || "red";
         if (p.edges.length > 0) {
           ctx.beginPath();
           drawEdge(p.edges[0][0], p.edges[0][1], p.pct);
@@ -282,7 +282,8 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
         console.log("fail");
       }
       let cv = mapVerticeToCanvas(midPointVertice, canvas);
-      drawLabel("E" + i, cv.x, cv.y);
+      let w = Math.round(calcDistance(v1, v2) * 1000) / 1000;
+      drawLabel("w=" + w, cv.x, cv.y);
     }
   }
   function drawVertice(v) {
@@ -531,11 +532,11 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
     init();
     loadData(verticesUrl);
   });
-  function drawPathInterface(vs) {
+  function drawPathInterface(vs, extra) {
     let pathVertices = vs.map(vertexIdx => {
       return vertices[vertexIdx];
     });
-    drawTasks.push(createDrawPathDrawTask(pathVertices));
+    drawTasks.push(createDrawPathDrawTask(pathVertices, extra));
     processDrawTasks();
   }
   return {
@@ -557,10 +558,12 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
     clearVerticesAndEdges: function() {
       this.setVertices([]);
       this.setEdges([]);
+      draw();
     },
     getSelectedVertices: function() {
       return selectedVertices;
     },
+    draw: draw,
     drawPath: drawPathInterface,
     calcDistance: calcDistance,
     cross: cross

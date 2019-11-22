@@ -31,9 +31,13 @@
       </label>
     </div>
     <div>
+      <input type="button" id="btn_bfs" value="bfs" />
+      <input type="button" id="btn_bellmanFord" value="Bellman-Ford" />
+    </div>
+    <div>
       <span
-        >enter vertice numbers separated by spaces. click 'draw path' to
-        specified path.</span
+        >enter vertice numbers separated by spaces or commas. click 'draw path'
+        to specified path.</span
       ><br />
       <input type="button" id="btn_drawPath" value="draw path" /><br />
       <textarea id="txt_path_input" rows="5" cols="80"></textarea><br />
@@ -44,8 +48,28 @@
       <input type="button" id="btn_updateOutput" value="Update" /><br />
     </div>
     <div>
-      <input type="button" id="btn_bfs" value="bfs" />
-      <input type="button" id="btn_bellmanFord" value="Bellman-Ford" />
+      <input
+        id="btn_clearGraph"
+        type="button"
+        style="background: red;color:yellow;font-size: x-large"
+        value="clear graph"
+      />
+    </div>
+    <div>
+      <input
+        id="btn_loadGraphFromLocalStorage"
+        type="button"
+        value="Load selected graph from local storage"
+      />
+      <input
+        id="btn_saveGraphToLocalStorage"
+        type="button"
+        value="Save graph to local storage"
+      />
+      <div>
+        <span id="lbl_savedGraphs">Saved graphs (click to refresh)</span>
+        <select id="lst_localStorageGraphs"> </select>
+      </div>
     </div>
     <script src="app.js"></script>
     <script src="graphM.js"></script>
@@ -77,25 +101,89 @@
               };
             });
         }));
-        window.D = [convertedEdges];
         convertedEdges.forEach((edges, i) => {
           g.addVertex(i.toString(), edges);
         });
         return g;
       }
 
+      document
+        .getElementById("lbl_savedGraphs")
+        .addEventListener("click", function() {
+          console.log("enumerate local storage...");
+          let lstElem = document.getElementById("lst_localStorageGraphs");
+          let sHtml = "";
+          let localStorageGraphs =
+            (localStorage.bxlnc_graphs &&
+              JSON.parse(localStorage.bxlnc_graphs)) ||
+            [];
+          for (const g of localStorageGraphs) {
+            console.log(g);
+            sHtml += `<option value="${g.id}">${g.label}</option>`;
+          }
+          lstElem.innerHTML = sHtml;
+        });
+      document
+        .getElementById("btn_saveGraphToLocalStorage")
+        .addEventListener("click", function() {
+          console.log("save current graph to local storage");
+          let localStorageGraphs =
+            (localStorage.bxlnc_graphs &&
+              JSON.parse(localStorage.bxlnc_graphs)) ||
+            [];
+          const now = new Date();
+          localStorageGraphs.push({
+            id: now.getTime(),
+            label: `graph saved at ${now.toString()}`,
+            graph: { vertices: app.getVertices(), edges: app.getEdges() }
+          });
+          localStorage.bxlnc_graphs = JSON.stringify(localStorageGraphs);
+        });
+
+      document
+        .getElementById("btn_loadGraphFromLocalStorage")
+        .addEventListener("click", function() {
+          console.log("load selected graph from local storage");
+          let localStorageGraphs =
+            (localStorage.bxlnc_graphs &&
+              JSON.parse(localStorage.bxlnc_graphs)) ||
+            [];
+          const lstElem = document.getElementById("lst_localStorageGraphs");
+          const selectedGraph = localStorageGraphs.find(graph => {
+            return graph.id.toString() === lstElem.value.toString();
+          });
+          if (selectedGraph) {
+            app.clearVerticesAndEdges();
+            app.setVertices(selectedGraph.graph.vertices);
+            app.setEdges(selectedGraph.graph.edges);
+          }
+          console.log(selectedGraph);
+        });
+
+      document
+        .getElementById("btn_clearGraph")
+        .addEventListener("click", function() {
+          let really_clear_graph = window.confirm(
+            "really delete vertices and edges from graph?\nthis cannot be undone"
+          );
+          if (really_clear_graph === false) {
+            return;
+          }
+          console.log("clearing");
+          app.clearVerticesAndEdges();
+        });
+
       document.getElementById("btn_bfs").addEventListener("click", function() {
-        console.log("do bfs");
-        doit("bfs");
+        doit("bfs", { strokeStyle: "lime" });
       });
+
       document
         .getElementById("btn_bellmanFord")
         .addEventListener("click", function() {
-          console.log("do bfs");
-          doit("bellmanFord");
+          doit("bellmanFord", { strokeStyle: "#ff00ee" });
         });
 
-      function doit(algorithm) {
+      function doit(algorithm, drawOptions) {
         let selectedVertices = app.getSelectedVertices();
         if (selectedVertices.length !== 2) {
           alert("select two vertices");
@@ -114,7 +202,8 @@
         app.drawPath(
           paths.allPaths.get(selectedVertices[1].toString()).map(i => {
             return parseInt(i);
-          })
+          }),
+          drawOptions
         );
       }
     </script>
