@@ -132,10 +132,17 @@
               JSON.parse(localStorage.bxlnc_graphs)) ||
             [];
           const now = new Date();
+          const defragmentedVerticesAndEdges = app.defragmentVerticesAndEdges(
+            app.getVertices(),
+            app.getEdges()
+          );
           localStorageGraphs.push({
             id: now.getTime(),
             label: `graph saved at ${now.toString()}`,
-            graph: { vertices: app.getVertices(), edges: app.getEdges() }
+            graph: {
+              vertices: defragmentedVerticesAndEdges.vertices,
+              edges: defragmentedVerticesAndEdges.edges
+            }
           });
           localStorage.bxlnc_graphs = JSON.stringify(localStorageGraphs);
         });

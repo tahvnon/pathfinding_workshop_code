@@ -510,18 +510,18 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
         newEdges.push(makeEdge(m[v1], m[v2]));
       }
 
-      return [newVertices, newEdges];
+      return { vertices: newVertices, edges: newEdges };
     }
 
-    let o = _defragmentVerticesAndEdges(vs, es);
-    vertices = o[0];
-    edges = o[1];
+    let res = _defragmentVerticesAndEdges(vs, es);
+
     console.log(
       "defragmented, old v count:",
       vs.length,
       " new v count:",
       vertices.length
     );
+    return res;
   }
   backgroundImage.src = bgImageUrl;
   backgroundImage.addEventListener("load", e => {
@@ -563,6 +563,7 @@ const NodeEditorApp = function(verticesUrl, bgImageUrl) {
     getSelectedVertices: function() {
       return selectedVertices;
     },
+    defragmentVerticesAndEdges: defragmentVerticesAndEdges,
     draw: draw,
     drawPath: drawPathInterface,
     calcDistance: calcDistance,
